@@ -25,7 +25,9 @@ android {
     compileSdkVersion 33
 
     defaultConfig {
-        minSdkVersion 16
+        namespace "xyz.justsoft.video_thumbnail"
+        
+        minSdkVersion 24
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
     lintOptions {
