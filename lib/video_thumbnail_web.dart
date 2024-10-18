@@ -107,6 +107,7 @@ class VideoThumbnailWeb extends VideoThumbnailPlatform {
     final video = HTMLVideoElement()
       ..src = videoSrc
       ..autoplay = true
+      ..playsInline = true
       ..muted = true;
 
     document.body!.append(video);
@@ -116,6 +117,7 @@ class VideoThumbnailWeb extends VideoThumbnailPlatform {
     });
 
     video.onSeeked.listen((Event e) async {
+      await Future.delayed(Duration(seconds: 1));
       if (!completer.isCompleted) {
         final canvas = HTMLCanvasElement();
         final ctx = canvas.context2D;
