@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:html';
+import 'dart:js_interop';
 import 'dart:math' as math;
 
 import 'package:cross_file/cross_file.dart';
@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 import 'package:get_thumbnail_video/src/image_format.dart';
 import 'package:get_thumbnail_video/src/video_thumbnail_platform.dart';
+import 'package:web/web.dart';
 
 // An error code value to error name Map.
 // See: https://developer.mozilla.org/en-US/docs/Web/API/MediaError/code
@@ -60,7 +61,7 @@ class VideoThumbnailWeb extends VideoThumbnailPlatform {
       quality: quality,
     );
 
-    return XFile(Url.createObjectUrlFromBlob(blob), mimeType: blob.type);
+    return XFile(URL.createObjectURL(blob), mimeType: blob.type);
   }
 
   @override
@@ -82,10 +83,10 @@ class VideoThumbnailWeb extends VideoThumbnailPlatform {
       timeMs: timeMs,
       quality: quality,
     );
-    final path = Url.createObjectUrlFromBlob(blob);
+    final path = URL.createObjectURL(blob);
     final file = XFile(path, mimeType: blob.type);
     final bytes = await file.readAsBytes();
-    Url.revokeObjectUrl(path);
+    URL.revokeObjectURL(path);
 
     return bytes;
   }
@@ -103,7 +104,7 @@ class VideoThumbnailWeb extends VideoThumbnailPlatform {
 
     final timeSec = math.max(timeMs / 1000, 0);
 
-    final video = VideoElement()
+    final video = HTMLVideoElement()
       ..src = videoSrc
       ..autoplay = true
       ..muted = true;
@@ -116,7 +117,7 @@ class VideoThumbnailWeb extends VideoThumbnailPlatform {
 
     video.onSeeked.listen((Event e) async {
       if (!completer.isCompleted) {
-        final canvas = CanvasElement(width: video.videoHeight, height: video.height);
+        final canvas = HTMLCanvasElement();
         final ctx = canvas.context2D;
 
         if (maxWidth == 0 && maxHeight == 0) {
@@ -142,16 +143,19 @@ class VideoThumbnailWeb extends VideoThumbnailPlatform {
           canvas
             ..width = maxWidth
             ..height = maxHeight;
-          ctx.drawImageScaled(video, 0, 0, maxWidth, maxHeight);
+          ctx.drawImageScaled(video, 0, 0, maxWidth.toDouble(), maxHeight.toDouble());
         }
 
         try {
-          final blob = canvas.toBlob(
-            _imageFormatToCanvasFormat(imageFormat),
-            quality / 100,
-          );
+          final BlobCallback blobCallback = (Blob blob) {
+            completer.complete(blob);
+          }.toJS;
 
-          completer.complete(blob);
+          canvas.toBlob(
+            blobCallback,
+            _imageFormatToCanvasFormat(imageFormat),
+            (quality / 100).toJS,
+          );
         } catch (e, s) {
           completer.completeError(
             PlatformException(
@@ -183,40 +187,6 @@ class VideoThumbnailWeb extends VideoThumbnailPlatform {
         );
       }
     });
-    return completer.future;
-  }
-
-  /// Fetching video by [headers].
-  ///
-  /// To avoid reading the video's bytes into memory, set the
-  /// [HttpRequest.responseType] to 'blob'. This allows the blob to be stored in
-  /// the browser's disk or memory cache.
-  Future<Blob> _fetchVideoByHeaders({
-    required String videoSrc,
-    required Map<String, String> headers,
-  }) async {
-    final completer = Completer<Blob>();
-
-    final xhr = HttpRequest()
-      ..open('GET', videoSrc, async: true)
-      ..responseType = 'blob';
-    headers.forEach(xhr.setRequestHeader);
-
-    xhr.onLoad.first.then((ProgressEvent value) {
-      completer.complete(xhr.response as Blob);
-    });
-
-    xhr.onError.first.then((ProgressEvent value) {
-      completer.completeError(
-        PlatformException(
-          code: 'VIDEO_FETCH_ERROR',
-          message: 'Status: ${xhr.statusText}',
-        ),
-      );
-    });
-
-    xhr.send();
-
     return completer.future;
   }
 
