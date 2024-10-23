@@ -1,6 +1,6 @@
 name: get_thumbnail_video
 description: A flutter plugin for creating a thumbnail from a local video file or from a video URL.
-version: 0.6.1
+version: 0.6.2
 repository: https://github.com/Alberto-Monteiro/video_thumbnail
 
 environment:
@@ -24,7 +24,7 @@ dev_dependencies:
 
 flutter:
   plugin:
-    implements: video_thumbnail
+    implements: get_thumbnail_video
     platforms:
       android:
         package: xyz.justsoft.video_thumbnail
